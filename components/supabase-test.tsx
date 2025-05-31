@@ -13,6 +13,7 @@ export function SupabaseTest() {
     success: boolean
     message: string
     error?: string
+    count?: number
   } | null>(null)
 
   const handleTestConnection = async () => {
@@ -71,6 +72,12 @@ export function SupabaseTest() {
             </div>
 
             <p className="text-sm text-gray-600 dark:text-gray-400">{connectionStatus.message}</p>
+
+            {connectionStatus.count !== undefined && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Contagem de pacientes: <span className="font-medium">{connectionStatus.count}</span>
+              </p>
+            )}
 
             {connectionStatus.error && (
               <p className="text-sm text-red-600 dark:text-red-400">Erro: {connectionStatus.error}</p>

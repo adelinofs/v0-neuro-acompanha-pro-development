@@ -80,14 +80,19 @@ export interface MetricaProgresso {
 // Funções de teste de conexão
 export async function testConnection() {
   try {
-    const { data, error } = await supabase.from("pacientes").select("count(*)").limit(1)
+    // Corrigido: usar .count() em vez de .select("count(*)")
+    const { count, error } = await supabase.from("pacientes").select("*", { count: "exact", head: true })
 
     if (error) {
       console.error("Erro na conexão:", error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, message: "Conexão com Supabase estabelecida com sucesso!" }
+    return {
+      success: true,
+      message: "Conexão com Supabase estabelecida com sucesso!",
+      count,
+    }
   } catch (error) {
     console.error("Erro na conexão:", error)
     return { success: false, error: "Erro ao conectar com o banco de dados" }
