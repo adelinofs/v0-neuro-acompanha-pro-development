@@ -1,7 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Verificar se as variáveis de ambiente estão definidas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl) {
+  throw new Error("NEXT_PUBLIC_SUPABASE_URL is required")
+}
+
+if (!supabaseAnonKey) {
+  throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is required")
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -80,6 +89,11 @@ export interface MetricaProgresso {
 // Funções de teste de conexão
 export async function testConnection() {
   try {
+    // Verificar se o cliente Supabase foi inicializado corretamente
+    if (!supabase) {
+      return { success: false, error: "Cliente Supabase não inicializado" }
+    }
+
     // Corrigido: usar .count() em vez de .select("count(*)")
     const { count, error } = await supabase.from("pacientes").select("*", { count: "exact", head: true })
 
@@ -101,196 +115,331 @@ export async function testConnection() {
 
 // Funções para Pacientes
 export async function getPacientes(usuarioId: string) {
-  const { data, error } = await supabase
-    .from("pacientes")
-    .select("*")
-    .eq("usuario_id", usuarioId)
-    .order("criado_em", { ascending: false })
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("pacientes")
+      .select("*")
+      .eq("usuario_id", usuarioId)
+      .order("criado_em", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao buscar pacientes:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar pacientes:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar pacientes" } }
   }
-
-  return { data, error: null }
 }
 
 export async function getPacienteById(id: string) {
-  const { data, error } = await supabase.from("pacientes").select("*").eq("id", id).single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("pacientes").select("*").eq("id", id).single()
+
+    if (error) {
+      console.error("Erro ao buscar paciente:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar paciente:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar paciente" } }
   }
-
-  return { data, error: null }
 }
 
 export async function createPaciente(paciente: Omit<Paciente, "id" | "criado_em" | "atualizado_em">) {
-  const { data, error } = await supabase.from("pacientes").insert([paciente]).select().single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("pacientes").insert([paciente]).select().single()
+
+    if (error) {
+      console.error("Erro ao criar paciente:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao criar paciente:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao criar paciente" } }
   }
-
-  return { data, error: null }
 }
 
 export async function updatePaciente(id: string, updates: Partial<Paciente>) {
-  const { data, error } = await supabase
-    .from("pacientes")
-    .update({ ...updates, atualizado_em: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("pacientes")
+      .update({ ...updates, atualizado_em: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Erro ao atualizar paciente:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao atualizar paciente:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao atualizar paciente" } }
   }
-
-  return { data, error: null }
 }
 
 // Funções para Sessões
 export async function getSessoesByPaciente(pacienteId: string) {
-  const { data, error } = await supabase
-    .from("sessoes")
-    .select("*")
-    .eq("paciente_id", pacienteId)
-    .order("data_sessao", { ascending: false })
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("sessoes")
+      .select("*")
+      .eq("paciente_id", pacienteId)
+      .order("data_sessao", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao buscar sessões:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar sessões:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar sessões" } }
   }
-
-  return { data, error: null }
 }
 
 export async function createSessao(sessao: Omit<Sessao, "id" | "criado_em" | "atualizado_em">) {
-  const { data, error } = await supabase.from("sessoes").insert([sessao]).select().single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("sessoes").insert([sessao]).select().single()
+
+    if (error) {
+      console.error("Erro ao criar sessão:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao criar sessão:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao criar sessão" } }
   }
-
-  return { data, error: null }
 }
 
 export async function updateSessao(id: string, updates: Partial<Sessao>) {
-  const { data, error } = await supabase
-    .from("sessoes")
-    .update({ ...updates, atualizado_em: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("sessoes")
+      .update({ ...updates, atualizado_em: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Erro ao atualizar sessão:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao atualizar sessão:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao atualizar sessão" } }
   }
-
-  return { data, error: null }
 }
 
 export async function deleteSessao(id: string) {
-  const { error } = await supabase.from("sessoes").delete().eq("id", id)
+  try {
+    if (!supabase) {
+      return { error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { error } = await supabase.from("sessoes").delete().eq("id", id)
+
+    if (error) {
+      console.error("Erro ao deletar sessão:", error)
+      return { error }
+    }
+
+    return { error: null }
+  } catch (error) {
     console.error("Erro ao deletar sessão:", error)
-    return { error }
+    return { error: { message: "Erro inesperado ao deletar sessão" } }
   }
-
-  return { error: null }
 }
 
 // Funções para Marcos de Desenvolvimento
 export async function getMarcosByPaciente(pacienteId: string) {
-  const { data, error } = await supabase
-    .from("marcos_desenvolvimento")
-    .select("*")
-    .eq("paciente_id", pacienteId)
-    .order("criado_em", { ascending: false })
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("marcos_desenvolvimento")
+      .select("*")
+      .eq("paciente_id", pacienteId)
+      .order("criado_em", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao buscar marcos:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar marcos:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar marcos" } }
   }
-
-  return { data, error: null }
 }
 
 export async function createMarco(marco: Omit<MarcoDesenvolvimento, "id" | "criado_em" | "atualizado_em">) {
-  const { data, error } = await supabase.from("marcos_desenvolvimento").insert([marco]).select().single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("marcos_desenvolvimento").insert([marco]).select().single()
+
+    if (error) {
+      console.error("Erro ao criar marco:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao criar marco:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao criar marco" } }
   }
-
-  return { data, error: null }
 }
 
 // Funções para Planos de Tratamento
 export async function getPlanosByPaciente(pacienteId: string) {
-  const { data, error } = await supabase
-    .from("planos_tratamento")
-    .select("*")
-    .eq("paciente_id", pacienteId)
-    .order("criado_em", { ascending: false })
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("planos_tratamento")
+      .select("*")
+      .eq("paciente_id", pacienteId)
+      .order("criado_em", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao buscar planos:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar planos:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar planos" } }
   }
-
-  return { data, error: null }
 }
 
 export async function createPlano(plano: Omit<PlanoTratamento, "id" | "criado_em" | "atualizado_em">) {
-  const { data, error } = await supabase.from("planos_tratamento").insert([plano]).select().single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("planos_tratamento").insert([plano]).select().single()
+
+    if (error) {
+      console.error("Erro ao criar plano:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao criar plano:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao criar plano" } }
   }
-
-  return { data, error: null }
 }
 
 // Funções para Métricas de Progresso
 export async function getMetricasByPaciente(pacienteId: string) {
-  const { data, error } = await supabase
-    .from("metricas_progresso")
-    .select("*")
-    .eq("paciente_id", pacienteId)
-    .order("data_registro", { ascending: false })
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase
+      .from("metricas_progresso")
+      .select("*")
+      .eq("paciente_id", pacienteId)
+      .order("data_registro", { ascending: false })
+
+    if (error) {
+      console.error("Erro ao buscar métricas:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao buscar métricas:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao buscar métricas" } }
   }
-
-  return { data, error: null }
 }
 
 export async function createMetrica(metrica: Omit<MetricaProgresso, "id" | "criado_em" | "atualizado_em">) {
-  const { data, error } = await supabase.from("metricas_progresso").insert([metrica]).select().single()
+  try {
+    if (!supabase) {
+      return { data: null, error: { message: "Cliente Supabase não inicializado" } }
+    }
 
-  if (error) {
+    const { data, error } = await supabase.from("metricas_progresso").insert([metrica]).select().single()
+
+    if (error) {
+      console.error("Erro ao criar métrica:", error)
+      return { data: null, error }
+    }
+
+    return { data, error: null }
+  } catch (error) {
     console.error("Erro ao criar métrica:", error)
-    return { data: null, error }
+    return { data: null, error: { message: "Erro inesperado ao criar métrica" } }
   }
-
-  return { data, error: null }
 }
 
 // Funções de estatísticas
 export async function getDashboardStats(usuarioId: string) {
   try {
+    if (!supabase) {
+      return {
+        pacientes: 0,
+        sessoes: 0,
+        marcos: 0,
+        marcosAlcancados: 0,
+      }
+    }
+
     // Buscar pacientes
     const { data: pacientes } = await getPacientes(usuarioId)
 
