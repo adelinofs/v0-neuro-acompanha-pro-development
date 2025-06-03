@@ -141,8 +141,31 @@ export function PacienteHeader({ pacienteId }: PacienteHeaderProps) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-center">
-            <p className="text-gray-500 dark:text-gray-400">Paciente não encontrado</p>
+          <div className="text-center space-y-4">
+            <div>
+              <p className="text-gray-500 dark:text-gray-400">Paciente não encontrado</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                ID buscado:{" "}
+                <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{pacienteId}</span>
+              </p>
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Pacientes disponíveis:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                {Object.entries(pacientesExemplo).map(([id, p]) => (
+                  <Link
+                    key={id}
+                    href={`/dashboard/pacientes/${id}`}
+                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="text-gray-700 dark:text-gray-300">{p.nome}</span>
+                    <span className="text-xs text-gray-500 font-mono">ID: {id}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             <Link href="/dashboard">
               <Button variant="outline" className="mt-4">
                 <ArrowLeft className="mr-2 h-4 w-4" />
