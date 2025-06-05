@@ -1,65 +1,74 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus } from "lucide-react"
 import { MarcoForm } from "@/components/forms/marco-form"
 import { MarcoCard } from "@/components/marco-card"
-import type { MarcoDesenvolvimento } from "@/lib/supabase"
+import { getMarcosByPaciente, createMarco, type MarcoDesenvolvimento } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 
 interface MarcosTabProps {
   pacienteId: string
 }
 
-// Dados de exemplo
-const marcosExemplo: MarcoDesenvolvimento[] = [
-  {
-    id: "1",
-    paciente_id: "1",
-    categoria: "Comunicação",
-    titulo: "Primeira palavra funcional",
-    descricao: 'Paciente conseguiu usar a palavra "água" de forma funcional para solicitar',
-    data_alcancado: "2024-01-10",
-    status: "alcancado",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-10T00:00:00Z",
-  },
-  {
-    id: "2",
-    paciente_id: "1",
-    categoria: "Social",
-    titulo: "Contato visual sustentado",
-    descricao: "Manter contato visual por pelo menos 3 segundos durante interações",
-    status: "em_progresso",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-15T00:00:00Z",
-  },
-  {
-    id: "3",
-    paciente_id: "1",
-    categoria: "Motor",
-    titulo: "Coordenação motora fina",
-    descricao: "Conseguir segurar e usar utensílios de desenho adequadamente",
-    status: "pendente",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-01T00:00:00Z",
-  },
-]
-
 export function MarcosTab({ pacienteId }: MarcosTabProps) {
   const [showForm, setShowForm] = useState(false)
-  const [marcos, setMarcos] = useState<MarcoDesenvolvimento[]>(marcosExemplo)
+  const [marcos, setMarcos] = useState<MarcoDesenvolvimento[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
-  const handleAddMarco = (novoMarco: Omit<MarcoDesenvolvimento, "id" | "criado_em" | "atualizado_em">) => {
-    const marco: MarcoDesenvolvimento = {
-      ...novoMarco,
-      id: Date.now().toString(),
-      criado_em: new Date().toISOString(),
-      atualizado_em: new Date().toISOString(),
+  useEffect(() => {
+    loadMarcos()
+  }, [pacienteId])
+
+  const loadMarcos = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await getMarcosByPaciente(pacienteId)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setMarcos(data || [])
+    } catch (error: any) {
+      console.error("Erro ao carregar marcos:", error)
+      toast({
+        title: "Erro ao carregar marcos",
+        description: error.message || "Não foi possível carregar os marcos de desenvolvimento",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-    setMarcos([marco, ...marcos])
-    setShowForm(false)
+  }
+
+  const handleAddMarco = async (novoMarco: Omit<MarcoDesenvolvimento, "id" | "criado_em" | "atualizado_em">) => {
+    try {
+      const { data, error } = await createMarco(novoMarco)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (data) {
+        setMarcos([data, ...marcos])
+        setShowForm(false)
+        toast({
+          title: "Marco criado",
+          description: "Marco de desenvolvimento criado com sucesso",
+        })
+      }
+    } catch (error: any) {
+      console.error("Erro ao criar marco:", error)
+      toast({
+        title: "Erro ao criar marco",
+        description: error.message || "Não foi possível criar o marco de desenvolvimento",
+        variant: "destructive",
+      })
+    }
   }
 
   const categorias = ["Comunicação", "Social", "Motor", "Cognitivo", "Comportamental"]
@@ -67,6 +76,18 @@ export function MarcosTab({ pacienteId }: MarcosTabProps) {
     categoria,
     marcos: marcos.filter((marco) => marco.categoria === categoria),
   }))
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-32"></div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

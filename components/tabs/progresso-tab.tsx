@@ -4,87 +4,63 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import type { MetricaProgresso } from "@/lib/supabase"
+import { getMetricasByPaciente, type MetricaProgresso } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 
 interface ProgressoTabProps {
   pacienteId: string
 }
 
-// Dados de exemplo para o gráfico
-const metricasExemplo: MetricaProgresso[] = [
-  {
-    id: "1",
-    paciente_id: "1",
-    categoria: "Comunicação",
-    valor: 3,
-    data_registro: "2024-01-01",
-    observacao: "Avaliação inicial",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "2",
-    paciente_id: "1",
-    categoria: "Comunicação",
-    valor: 4,
-    data_registro: "2024-01-15",
-    observacao: "Melhora na comunicação verbal",
-    criado_em: "2024-01-15T00:00:00Z",
-    atualizado_em: "2024-01-15T00:00:00Z",
-  },
-  {
-    id: "3",
-    paciente_id: "1",
-    categoria: "Comunicação",
-    valor: 5,
-    data_registro: "2024-02-01",
-    observacao: "Progresso contínuo",
-    criado_em: "2024-02-01T00:00:00Z",
-    atualizado_em: "2024-02-01T00:00:00Z",
-  },
-  {
-    id: "4",
-    paciente_id: "1",
-    categoria: "Social",
-    valor: 2,
-    data_registro: "2024-01-01",
-    observacao: "Avaliação inicial",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "5",
-    paciente_id: "1",
-    categoria: "Social",
-    valor: 3,
-    data_registro: "2024-01-15",
-    observacao: "Pequena melhora na interação",
-    criado_em: "2024-01-15T00:00:00Z",
-    atualizado_em: "2024-01-15T00:00:00Z",
-  },
-  {
-    id: "6",
-    paciente_id: "1",
-    categoria: "Social",
-    valor: 4,
-    data_registro: "2024-02-01",
-    observacao: "Melhora significativa",
-    criado_em: "2024-02-01T00:00:00Z",
-    atualizado_em: "2024-02-01T00:00:00Z",
-  },
-]
-
 export function ProgressoTab({ pacienteId }: ProgressoTabProps) {
   const [categoria, setCategoria] = useState<string>("Comunicação")
   const [metricas, setMetricas] = useState<MetricaProgresso[]>([])
+  const [todasMetricas, setTodasMetricas] = useState<MetricaProgresso[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    loadMetricas()
+  }, [pacienteId])
 
   useEffect(() => {
     // Filtrar métricas pela categoria selecionada
-    const metricasFiltradas = metricasExemplo.filter((m) => m.categoria === categoria)
+    const metricasFiltradas = todasMetricas.filter((m) => m.categoria === categoria)
     setMetricas(metricasFiltradas)
-  }, [categoria])
+  }, [categoria, todasMetricas])
+
+  const loadMetricas = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await getMetricasByPaciente(pacienteId)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setTodasMetricas(data || [])
+    } catch (error: any) {
+      console.error("Erro ao carregar métricas:", error)
+      toast({
+        title: "Erro ao carregar progresso",
+        description: error.message || "Não foi possível carregar as métricas de progresso",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const categorias = ["Comunicação", "Social", "Motor", "Cognitivo", "Comportamental"]
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse">
+          <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-96"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -145,6 +121,7 @@ export function ProgressoTab({ pacienteId }: ProgressoTabProps) {
             ) : (
               <div className="text-center text-gray-500 dark:text-gray-400">
                 <p>Nenhum dado disponível para esta categoria</p>
+                <p className="text-sm mt-2">Registre sessões com avaliações para visualizar o progresso</p>
               </div>
             )}
           </div>

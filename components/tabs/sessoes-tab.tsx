@@ -9,66 +9,11 @@ import { Plus, Search, Filter, Calendar } from "lucide-react"
 import { SessaoForm } from "@/components/forms/sessao-form"
 import { SessaoCard } from "@/components/sessao-card"
 import { useToast } from "@/hooks/use-toast"
-import type { Sessao } from "@/lib/supabase"
+import { getSessoesByPaciente, createSessao, updateSessao, deleteSessao, type Sessao } from "@/lib/supabase"
 
 interface SessoesTabProps {
   pacienteId: string
 }
-
-// Dados de exemplo mais robustos
-const sessoesExemplo: Sessao[] = [
-  {
-    id: "1",
-    paciente_id: "1",
-    data_sessao: "2024-01-15T10:00:00Z",
-    duracao: 60,
-    observacoes:
-      "Sessão produtiva, paciente demonstrou boa participação nas atividades propostas. Trabalhou bem com materiais visuais.",
-    objetivos: "Trabalhar comunicação verbal e interação social através de jogos estruturados",
-    resultados:
-      "Melhora significativa na comunicação não-verbal, conseguiu manter contato visual por períodos mais longos",
-    status: "realizada",
-    criado_em: "2024-01-15T10:00:00Z",
-    atualizado_em: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    paciente_id: "1",
-    data_sessao: "2024-01-08T10:00:00Z",
-    duracao: 45,
-    observacoes:
-      "Paciente apresentou resistência inicial, mas colaborou durante a sessão. Mostrou interesse em atividades com música.",
-    objetivos: "Desenvolver habilidades motoras finas através de atividades de coordenação",
-    resultados: "Progresso gradual nas atividades de coordenação, conseguiu completar 3 de 5 exercícios propostos",
-    status: "realizada",
-    criado_em: "2024-01-08T10:00:00Z",
-    atualizado_em: "2024-01-08T10:00:00Z",
-  },
-  {
-    id: "3",
-    paciente_id: "1",
-    data_sessao: "2024-01-22T14:00:00Z",
-    duracao: 60,
-    observacoes: "",
-    objetivos: "Continuar trabalho de comunicação e introduzir atividades de grupo",
-    resultados: "",
-    status: "agendada",
-    criado_em: "2024-01-20T10:00:00Z",
-    atualizado_em: "2024-01-20T10:00:00Z",
-  },
-  {
-    id: "4",
-    paciente_id: "1",
-    data_sessao: "2024-01-01T09:00:00Z",
-    duracao: 30,
-    observacoes: "Sessão cancelada devido a indisposição do paciente",
-    objetivos: "Avaliação inicial de habilidades sociais",
-    resultados: "",
-    status: "cancelada",
-    criado_em: "2024-01-01T09:00:00Z",
-    atualizado_em: "2024-01-01T09:00:00Z",
-  },
-]
 
 export function SessoesTab({ pacienteId }: SessoesTabProps) {
   const { toast } = useToast()
@@ -87,17 +32,18 @@ export function SessoesTab({ pacienteId }: SessoesTabProps) {
   const loadSessoes = async () => {
     try {
       setLoading(true)
-      // Simular carregamento do banco de dados
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      const { data, error } = await getSessoesByPaciente(pacienteId)
 
-      // Filtrar sessões pelo paciente
-      const sessoesPaciente = sessoesExemplo.filter((s) => s.paciente_id === pacienteId)
-      setSessoes(sessoesPaciente)
-    } catch (error) {
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setSessoes(data || [])
+    } catch (error: any) {
       console.error("Erro ao carregar sessões:", error)
       toast({
         title: "Erro ao carregar sessões",
-        description: "Não foi possível carregar as sessões do paciente",
+        description: error.message || "Não foi possível carregar as sessões do paciente",
         variant: "destructive",
       })
     } finally {
@@ -107,24 +53,26 @@ export function SessoesTab({ pacienteId }: SessoesTabProps) {
 
   const handleAddSessao = async (novaSessao: Omit<Sessao, "id" | "criado_em" | "atualizado_em">) => {
     try {
-      const sessao: Sessao = {
-        ...novaSessao,
-        id: Date.now().toString(),
-        criado_em: new Date().toISOString(),
-        atualizado_em: new Date().toISOString(),
+      const { data, error } = await createSessao(novaSessao)
+
+      if (error) {
+        throw new Error(error.message)
       }
 
-      setSessoes((prev) => [sessao, ...prev])
-      setShowForm(false)
-      setEditingSessao(null)
-
-      // Simular salvamento no banco
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    } catch (error) {
+      if (data) {
+        setSessoes((prev) => [data, ...prev])
+        setShowForm(false)
+        setEditingSessao(null)
+        toast({
+          title: "Sessão criada",
+          description: "Sessão registrada com sucesso",
+        })
+      }
+    } catch (error: any) {
       console.error("Erro ao salvar sessão:", error)
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar a sessão",
+        description: error.message || "Não foi possível salvar a sessão",
         variant: "destructive",
       })
     }
@@ -139,24 +87,26 @@ export function SessoesTab({ pacienteId }: SessoesTabProps) {
     if (!editingSessao) return
 
     try {
-      const sessaoCompleta: Sessao = {
-        ...sessaoAtualizada,
-        id: editingSessao.id,
-        criado_em: editingSessao.criado_em,
-        atualizado_em: new Date().toISOString(),
+      const { data, error } = await updateSessao(editingSessao.id, sessaoAtualizada)
+
+      if (error) {
+        throw new Error(error.message)
       }
 
-      setSessoes((prev) => prev.map((s) => (s.id === editingSessao.id ? sessaoCompleta : s)))
-      setShowForm(false)
-      setEditingSessao(null)
-
-      // Simular atualização no banco
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    } catch (error) {
+      if (data) {
+        setSessoes((prev) => prev.map((s) => (s.id === editingSessao.id ? data : s)))
+        setShowForm(false)
+        setEditingSessao(null)
+        toast({
+          title: "Sessão atualizada",
+          description: "Sessão atualizada com sucesso",
+        })
+      }
+    } catch (error: any) {
       console.error("Erro ao atualizar sessão:", error)
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar a sessão",
+        description: error.message || "Não foi possível atualizar a sessão",
         variant: "destructive",
       })
     }
@@ -166,20 +116,22 @@ export function SessoesTab({ pacienteId }: SessoesTabProps) {
     if (!confirm("Tem certeza que deseja excluir esta sessão?")) return
 
     try {
-      setSessoes((prev) => prev.filter((s) => s.id !== sessaoId))
+      const { error } = await deleteSessao(sessaoId)
 
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setSessoes((prev) => prev.filter((s) => s.id !== sessaoId))
       toast({
         title: "Sessão excluída",
         description: "A sessão foi excluída com sucesso",
       })
-
-      // Simular exclusão no banco
-      await new Promise((resolve) => setTimeout(resolve, 500))
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir sessão:", error)
       toast({
         title: "Erro ao excluir",
-        description: "Não foi possível excluir a sessão",
+        description: error.message || "Não foi possível excluir a sessão",
         variant: "destructive",
       })
     }

@@ -1,45 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Calendar, Target } from "lucide-react"
-import type { PlanoTratamento } from "@/lib/supabase"
+import { getPlanosByPaciente, type PlanoTratamento } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
 
 interface PlanosTratamentoTabProps {
   pacienteId: string
 }
 
-// Dados de exemplo
-const planosExemplo: PlanoTratamento[] = [
-  {
-    id: "1",
-    paciente_id: "1",
-    titulo: "Plano de Intervenção Comportamental",
-    descricao: "Foco em desenvolvimento de habilidades sociais e redução de comportamentos repetitivos",
-    data_inicio: "2024-01-01",
-    data_fim: "2024-06-30",
-    status: "ativo",
-    criado_em: "2024-01-01T00:00:00Z",
-    atualizado_em: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "2",
-    paciente_id: "1",
-    titulo: "Plano de Comunicação Alternativa",
-    descricao: "Implementação de sistema de comunicação por imagens e gestos",
-    data_inicio: "2023-10-15",
-    data_fim: "2024-04-15",
-    status: "ativo",
-    criado_em: "2023-10-15T00:00:00Z",
-    atualizado_em: "2023-10-15T00:00:00Z",
-  },
-]
-
 export function PlanosTratamentoTab({ pacienteId }: PlanosTratamentoTabProps) {
-  const [planos, setPlanos] = useState<PlanoTratamento[]>(planosExemplo)
+  const [planos, setPlanos] = useState<PlanoTratamento[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    loadPlanos()
+  }, [pacienteId])
+
+  const loadPlanos = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await getPlanosByPaciente(pacienteId)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setPlanos(data || [])
+    } catch (error: any) {
+      console.error("Erro ao carregar planos:", error)
+      toast({
+        title: "Erro ao carregar planos",
+        description: error.message || "Não foi possível carregar os planos de tratamento",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -65,6 +68,18 @@ export function PlanosTratamentoTab({ pacienteId }: PlanosTratamentoTabProps) {
       default:
         return status
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-32"></div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -124,6 +139,10 @@ export function PlanosTratamentoTab({ pacienteId }: PlanosTratamentoTabProps) {
           <Card>
             <CardContent className="text-center py-8">
               <p className="text-gray-500 dark:text-gray-400">Nenhum plano de tratamento cadastrado</p>
+              <Button variant="outline" onClick={() => setShowForm(true)} className="mt-4">
+                <Plus className="mr-2 h-4 w-4" />
+                Criar Primeiro Plano
+              </Button>
             </CardContent>
           </Card>
         )}
