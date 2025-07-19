@@ -1,75 +1,134 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PacienteCard } from "@/components/paciente-card"
-import { getPacientes } from "@/lib/supabase"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Database, Plus } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { getPacientes, isSupabaseConfigured, type Paciente } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
+import { Search, Plus, User, Calendar, Phone, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export function PacientesGrid() {
-  const [pacientes, setPacientes] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [pacientes, setPacientes] = useState<Paciente[]>([])
+  const [filteredPacientes, setFilteredPacientes] = useState<Paciente[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const loadPacientes = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      // Usar o UUID válido que inserimos no banco
-      const usuarioId = "00000000-0000-0000-0000-000000000000"
-      const { data, error } = await getPacientes(usuarioId)
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      setPacientes(data || [])
-    } catch (err: any) {
-      console.error("Erro ao carregar pacientes:", err)
-      setError(err.message || "Erro ao carregar pacientes")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [searchTerm, setSearchTerm] = useState("")
+  const { toast } = useToast()
 
   useEffect(() => {
     loadPacientes()
   }, [])
 
-  if (isLoading) {
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = pacientes.filter(
+        (paciente) =>
+          paciente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          paciente.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (paciente.diagnostico && paciente.diagnostico.toLowerCase().includes(searchTerm.toLowerCase())),
+      )
+      setFilteredPacientes(filtered)
+    } else {
+      setFilteredPacientes(pacientes)
+    }
+  }, [searchTerm, pacientes])
+
+  const loadPacientes = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      if (!isSupabaseConfigured()) {
+        setError("Banco de dados não configurado")
+        return
+      }
+
+      const usuarioId = "00000000-0000-0000-0000-000000000000"
+      const { data, error: supabaseError } = await getPacientes(usuarioId)
+
+      if (supabaseError) {
+        setError(supabaseError.message)
+        toast({
+          title: "Erro ao carregar pacientes",
+          description: supabaseError.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setPacientes(data || [])
+      setFilteredPacientes(data || [])
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error)
+      setError("Erro inesperado ao carregar pacientes")
+      toast({
+        title: "Erro ao carregar pacientes",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ativo":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      case "inativo":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+      case "alta":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("pt-BR")
+  }
+
+  const calculateAge = (birthDate: string) => {
+    const today = new Date()
+    const birth = new Date(birthDate)
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--
+    }
+
+    return age
+  }
+
+  if (loading) {
     return (
       <div className="space-y-6">
-        {/* Skeleton para estatísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          ))}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Pacientes</h2>
+            <p className="text-gray-600 dark:text-gray-400">Gerencie seus pacientes</p>
+          </div>
         </div>
 
-        {/* Skeleton para cards de pacientes */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="space-y-3">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <div className="pt-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full mt-1" />
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                 </div>
-                <div className="flex justify-between pt-2">
-                  <Skeleton className="h-8 w-20" />
-                  <Skeleton className="h-8 w-20" />
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -78,70 +137,29 @@ export function PacientesGrid() {
 
   if (error) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Pacientes</h2>
+            <p className="text-gray-600 dark:text-gray-400">Gerencie seus pacientes</p>
+          </div>
+          <Link href="/dashboard/pacientes/novo">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Paciente
+            </Button>
+          </Link>
+        </div>
+
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro de Conexão</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>{error}</p>
-            <p className="text-sm">
-              Verifique se as variáveis de ambiente do Supabase estão configuradas corretamente:
-            </p>
-            <ul className="text-sm list-disc list-inside space-y-1">
-              <li>NEXT_PUBLIC_SUPABASE_URL</li>
-              <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
-
-        <div className="flex gap-2">
-          <Button onClick={loadPacientes} variant="outline">
-            <Database className="h-4 w-4 mr-2" />
-            Tentar Novamente
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard/teste-conexao">Testar Conexão</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (pacientes.length === 0) {
-    return (
-      <div className="space-y-6">
-        {/* Estatísticas vazias */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-blue-600">0</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Pacientes Ativos</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-yellow-600">0</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Pacientes Inativos</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-green-600">0</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Altas Médicas</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-            <div className="text-2xl font-bold text-purple-600">0</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Total de Pacientes</div>
-          </div>
-        </div>
-
-        {/* Estado vazio */}
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Nenhum paciente encontrado</AlertTitle>
-          <AlertDescription className="space-y-3">
-            <p>Você ainda não possui pacientes cadastrados.</p>
-            <Button asChild>
-              <Link href="/dashboard/pacientes/novo">
-                <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Primeiro Paciente
-              </Link>
-            </Button>
+          <AlertTitle>Erro ao carregar pacientes</AlertTitle>
+          <AlertDescription>
+            {error}
+            <br />
+            <button onClick={loadPacientes} className="mt-2 text-sm underline hover:no-underline">
+              Tentar novamente
+            </button>
           </AlertDescription>
         </Alert>
       </div>
@@ -150,42 +168,123 @@ export function PacientesGrid() {
 
   return (
     <div className="space-y-6">
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">{pacientes.filter((p) => p.status === "ativo").length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Pacientes Ativos</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-yellow-600">
-            {pacientes.filter((p) => p.status === "inativo").length}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Pacientes Inativos</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-green-600">{pacientes.filter((p) => p.status === "alta").length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Altas Médicas</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-purple-600">{pacientes.length}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Total de Pacientes</div>
-        </div>
-      </div>
-
-      {/* Link para ver todos os pacientes */}
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Pacientes Recentes</h2>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/pacientes">Ver Todos os Pacientes</Link>
-        </Button>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Pacientes</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            {pacientes.length === 0
+              ? "Nenhum paciente cadastrado"
+              : `${pacientes.length} paciente${pacientes.length !== 1 ? "s" : ""} cadastrado${pacientes.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <Link href="/dashboard/pacientes/novo">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Paciente
+          </Button>
+        </Link>
       </div>
 
-      {/* Grid de pacientes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pacientes.slice(0, 6).map((paciente) => (
-          <PacienteCard key={paciente.id} paciente={paciente} />
-        ))}
-      </div>
+      {pacientes.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar pacientes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      )}
+
+      {!isSupabaseConfigured() && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Modo Demonstração</AlertTitle>
+          <AlertDescription>
+            O banco de dados não está configurado. Os dados mostrados são apenas para demonstração.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {pacientes.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <User className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum paciente cadastrado</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
+              Comece adicionando seu primeiro paciente para começar a acompanhar o desenvolvimento.
+            </p>
+            <Link href="/dashboard/pacientes/novo">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Cadastrar Primeiro Paciente
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredPacientes.map((paciente) => (
+            <Card key={paciente.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{paciente.nome}</CardTitle>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {calculateAge(paciente.data_nascimento)} anos
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(paciente.status)}>{paciente.status}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <User className="mr-2 h-4 w-4" />
+                    {paciente.responsavel}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formatDate(paciente.data_nascimento)}
+                  </div>
+                  {paciente.telefone && (
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                      <Phone className="mr-2 h-4 w-4" />
+                      {paciente.telefone}
+                    </div>
+                  )}
+                  {paciente.diagnostico && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Diagnóstico:</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{paciente.diagnostico}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4">
+                  <Link href={`/dashboard/pacientes/${paciente.id}`}>
+                    <Button variant="outline" className="w-full bg-transparent">
+                      Ver Detalhes
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {filteredPacientes.length === 0 && searchTerm && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Search className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum resultado encontrado</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-center">
+              Não encontramos pacientes que correspondam à sua busca por "{searchTerm}".
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
